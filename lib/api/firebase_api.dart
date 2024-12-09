@@ -1,6 +1,8 @@
 import 'dart:convert';
 
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'dart:io';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
@@ -116,9 +118,30 @@ class FirebaseApi {
   }
 
   Future<String?> getFCMToken() async {
+    if (await _isRunningOnSimulator()) {
+      if (kDebugMode) {
+        print('Running on iOS Simulator. Returning dummy token.');
+      }
+      return 'dummy_ios_simulator_token';
+    }
+
     final fCMToken = await _firebaseMessaging.getToken();
 
     return fCMToken;
+  }
+
+  Future<bool> _isRunningOnSimulator() async {
+    if (Platform.isIOS) {
+      DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
+      IosDeviceInfo iosInfo = await deviceInfo.iosInfo;
+
+      if (kDebugMode) {
+        print('Platform.environment: ${iosInfo.toString()}');
+      }
+      // Check if the device is a simulator
+      return iosInfo.isPhysicalDevice == false;
+    }
+    return false; // Not iOS, so not a simulator
   }
 
   Future initLocalNotifications() async {

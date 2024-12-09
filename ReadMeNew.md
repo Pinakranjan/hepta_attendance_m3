@@ -85,3 +85,57 @@ export PATH=$JAVA_HOME/bin:$PATH
    1. Edit the android/gradle.properties file in your Flutter project and add
       this line:
    2. org.gradle.java.home=/Library/Java/JavaVirtualMachines/openjdk-17.jdk/Contents/Home
+
+=========================================================================================================
+
+Checked attendance app in new macbook on 05-Dec-2024 it is working in below old
+setup
+
+1. flutter_macos_arm64_3.13.9-stable.zip (Old flutter)
+2. Android Studio Ladybug | 2024.2.1 Patch 2 (This is latest one as on date)
+
+=========================================================================================================
+
+# Clean Gradle and reinstall
+
+1. cd ~
+2. # rm -rf .gradle
+
+=========================================================================================================
+
+# Old Mac Setup
+
+1. flutter: 3.13.9
+2. XCode: 15.0.1
+3. VS Code: 1.94.2
+4. Android Studio: 2022.3.1
+
+5. gradel: 7.5-all
+
+6. Android SDK: 34.0
+7. Android NDK: 25.1.8437
+8. Command Line: 11.00
+9. CMake: 3.18.1
+10. OpenJDK: 17, 21
+
+=========================================================================================================
+
+softwareupdate --install-rosetta
+
+PRODUCT>SCHEME>EDIT SCHEME> ![alt text](image.png) ![alt text](image-1.png)
+
+=========================================================================================================
+Upload Symbols Failed The archive did not include a dSYM for the
+Flutter.framework with the UUIDs [4C4C44C6-5555-3144-A124-89C324693308]. Ensure
+that the archive's dSYM folder includes a DWARF file for Flutter.framework with
+the expected UUIDs
+
+# ![dSYM error](image-2.png)
+
+1. Archive Your App
+2. Open the Organizer
+3. Select Your Archive
+4. Start Distribution Process
+5. use custom
+6. Uncheck Upload your app’s symbols checkbox
+7. Continue with Distribution
