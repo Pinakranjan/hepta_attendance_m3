@@ -34,17 +34,12 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Camera Use For QR Code Reading</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>This app requires access to your location to verify attendance within the office premises, even when the app is in use or running in the background.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>This app needs access to location when open.</string>
+	<string>This app uses your location to verify that you are within the office premises when scanning a QR code for attendance. Your location is only used during attendance scans and is not stored or shared.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>fetch</string>
-		<string>location</string>
-		<string>processing</string>
-		<string>remote-notification</string>
-	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

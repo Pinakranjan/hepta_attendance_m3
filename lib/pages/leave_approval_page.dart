@@ -862,18 +862,20 @@ class _MyWidgetState extends State<LeaveApprovalPage>
                                                     const SizedBox(
                                                       width: 2,
                                                     ),
-                                                    Text(
-                                                      data.PURPOSE
-                                                          .split('\n')[0],
-                                                      maxLines: 1,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                      style: TextStyle(
-                                                          color: data.STATUS ==
-                                                                  'CANCELLED'
-                                                              ? Colors.red
-                                                              : Colors.black,
-                                                          fontSize: 12),
+                                                    Flexible(
+                                                      child: Text(
+                                                        data.PURPOSE
+                                                            .split('\n')[0],
+                                                        maxLines: 1,
+                                                        overflow: TextOverflow
+                                                            .ellipsis,
+                                                        style: TextStyle(
+                                                            color: data.STATUS ==
+                                                                    'CANCELLED'
+                                                                ? Colors.red
+                                                                : Colors.black,
+                                                            fontSize: 12),
+                                                      ),
                                                     ),
                                                     Visibility(
                                                       visible: data.PURPOSE

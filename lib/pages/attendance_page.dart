@@ -194,50 +194,66 @@ class _MyWidgetState extends State<AttendancePage>
     // This is called after build complete
     WidgetsBinding.instance.endOfFrame.then((_) async {
       if (mounted) {
-        // if (kDebugMode) {
-        //   print('Notify: ${widget.args!["notify"]}');
-        // }
-        await Hive.initFlutter();
-        Box box1 = await Hive.openBox('heptalogindata');
+        try {
+          // if (kDebugMode) {
+          //   print('Notify: ${widget.args!["notify"]}');
+          // }
+          await Hive.initFlutter();
+          Box box1 = await Hive.openBox('heptalogindata');
 
-        if (box1.get('uuid') != null) {
-          uuid = box1.get('uuid');
-          if (kDebugMode) {
-            print('UUID: $uuid');
-          }
-        }
-
-        await checkGps(context, false);
-        if (deviceId != 'NA') {
-          await checkip(context, deviceId, fcmToken);
-          getVecationData(context);
-
-          if (initialProcess == true &&
-              registered == true &&
-              blacklisted == false &&
-              fcmToken != null) {
-            FirebaseApi(onLeaveApprovalPN: _showLeaveButtonSheet)
-                .initNotifications(admin);
-
-            if (widget.args!["notify"].toString().contains('1:')) {
-              if (admin &&
-                  widget.args!["notify"].toString().contains('false')) {
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => LeaveApprovalPage()));
-              } else {
-                await _leaveBottomSheet(context);
-
-                setStateLeave = null;
-              }
+          if (box1.get('uuid') != null) {
+            uuid = box1.get('uuid');
+            if (kDebugMode) {
+              print('UUID: $uuid');
             }
           }
 
-          locationSub();
+          await checkGps(context, false);
+          if (deviceId != 'NA') {
+            await checkip(context, deviceId, fcmToken);
+            getVecationData(context);
+
+            if (initialProcess == true &&
+                registered == true &&
+                blacklisted == false &&
+                fcmToken != null) {
+              FirebaseApi(onLeaveApprovalPN: _showLeaveButtonSheet)
+                  .initNotifications(admin);
+
+              if (widget.args!["notify"].toString().contains('1:')) {
+                if (admin &&
+                    widget.args!["notify"].toString().contains('false')) {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => LeaveApprovalPage()));
+                } else {
+                  await _leaveBottomSheet(context);
+
+                  setStateLeave = null;
+                }
+              }
+
+              final progressContext = globalFormKey.currentContext;
+              if (progressContext != null) {
+                await getAttendanceWorkSummaryData(progressContext, 1, true);
+              } else {
+                if (kDebugMode) {
+                  print('ProgressHUD context is null.');
+                }
+              }
+            }
+
+            locationSub();
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            print('Error during initialization: $e');
+          }
         }
       }
     });
+
     // final themeState = Provider.of<CustomThemeProvider>;
 
     // var theme = CustomThemes.themeData(true, context);
@@ -469,6 +485,17 @@ class _MyWidgetState extends State<AttendancePage>
             await Future.delayed(const Duration(milliseconds: 100), () {});
             await _vecationBottomSheet(context);
             setStateVecation = null;
+          },
+          onLeaveSummary: (int type) async {
+            // awesomePopup(
+            //   context,
+            //   'Leave summary feature coming soon!',
+            //   'Leave Summary',
+            //   'info',
+            // ).show();
+
+            await Future.delayed(const Duration(milliseconds: 100), () {});
+            await getAttendanceWorkSummaryData(context, type, false);
           },
           onSummary: () async {
             await Future.delayed(const Duration(milliseconds: 100), () {});
@@ -6944,6 +6971,424 @@ class _MyWidgetState extends State<AttendancePage>
 
       return false;
     }
+
+    return false;
+  }
+
+  Future<bool> getAttendanceWorkSummaryData(
+      BuildContext context, int displayType, bool type) async {
+    setState(() {
+      summarylistResult = false;
+    });
+
+    final progress = ProgressHUD.of(context);
+    progress?.show();
+
+    try {
+      var dioObj = DioHelper();
+      final params = <String, dynamic>{
+        'dt_date': DateFormat("yyyy-MM-dd")
+            .format(DateTime.now().subtract(Duration(days: 1))),
+        'type': displayType,
+        'limit': 100,
+        'page': 1,
+      };
+
+      final response = await dioObj.api.get(
+        Config.attendanceLeaveSummaryAPI,
+        options: dio.Options(
+          headers: {"requires-token": false},
+        ),
+        queryParameters: params,
+      );
+
+      setState(() {
+        summarylistResult = true;
+      });
+
+      progress?.dismiss();
+
+      if (response.data == null || response.data['data'] == null) {
+        return false;
+      }
+
+      final result = response.data['data'];
+      final financialYear = response.data['financial_year'] ?? 'N/A';
+      final reportType = response.data['report_type'] ?? 'N/A';
+      final requestDate = response.data['request_date'] ?? 'N/A';
+
+      if (result.isNotEmpty) {
+        // Early exit condition for Off Days with no absences
+        if (reportType == "Off Days" &&
+            type == true &&
+            result.every((data) =>
+                (int.tryParse(data['total_absence_days'].toString()) ?? 0) ==
+                0)) {
+          progress?.dismiss();
+          return true;
+        }
+
+        final themeState = Theme.of(context);
+        final isDarkMode = themeState.brightness == Brightness.dark;
+
+        await showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) => Container(
+            height: MediaQuery.of(context).size.height * 0.8,
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: isDarkMode ? ColorConfig.darkMain : ColorConfig.lightMain,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: Column(
+              children: [
+                // Header Section
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              'Work Summary',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: isDarkMode ? Colors.white : Colors.black,
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[600],
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                reportType,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[600],
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                financialYear,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Text(
+                              'As On $requestDate',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontStyle: FontStyle.italic,
+                                color: isDarkMode
+                                    ? Colors.grey[300]
+                                    : Colors.grey[700],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.close,
+                          color: isDarkMode ? Colors.white : Colors.black),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 20),
+
+                // Table Header
+                Container(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      SizedBox(width: 16),
+                      SizedBox(
+                          width: 30,
+                          child: Text('SN',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: isDarkMode
+                                      ? Colors.white
+                                      : Colors.black))),
+                      SizedBox(width: 10),
+                      Expanded(
+                          flex: 2,
+                          child: Text('Name',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: isDarkMode
+                                      ? Colors.white
+                                      : Colors.black))),
+                      Expanded(
+                          flex: 1,
+                          child: Text(
+                              displayType == 2
+                                  ? 'Absent Days'
+                                  : displayType == 5
+                                      ? 'Missed Punch'
+                                      : 'Off Days',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color:
+                                      isDarkMode ? Colors.white : Colors.black),
+                              textAlign: TextAlign.center)),
+                      Expanded(
+                          flex: 1,
+                          child: Text('Work',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color:
+                                      isDarkMode ? Colors.white : Colors.black),
+                              textAlign: TextAlign.center)),
+                      Expanded(
+                          flex: 1,
+                          child: Text('Lunch',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color:
+                                      isDarkMode ? Colors.white : Colors.black),
+                              textAlign: TextAlign.center)),
+                      SizedBox(width: 8),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 8),
+
+                // Employee Data List
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: result.length,
+                    separatorBuilder: (context, index) => Divider(
+                        height: 1,
+                        color:
+                            isDarkMode ? Colors.grey[700] : Colors.grey[300]),
+                    itemBuilder: (context, index) {
+                      final data = result[index];
+                      final fullName = data['employee_name'] ?? 'Unknown';
+                      // final firstName = data['employee_name'].split(' ').first;
+                      final totalAbsenceDays =
+                          int.tryParse(data['total_absence_days'].toString()) ??
+                              0;
+                      final workTime = data['avg_worktime'] ?? '0:00';
+                      final lunchTime = data['avg_lunchtime'] ?? '0:00';
+                      final daysWithoutWorktime =
+                          data['days_without_worktime'] ?? 0;
+
+                      // Parse work time to hours and minutes
+                      final workTimeParts = workTime.split(':');
+                      final workHours = int.tryParse(workTimeParts[0]) ?? 0;
+                      final workMinutes = workTimeParts.length > 1
+                          ? int.tryParse(workTimeParts[1]) ?? 0
+                          : 0;
+                      final totalWorkMinutes = workHours * 60 + workMinutes;
+
+                      // Parse lunch time to hours and minutes
+                      final lunchTimeParts = lunchTime.split(':');
+                      final lunchHours = int.tryParse(lunchTimeParts[0]) ?? 0;
+                      final lunchMinutes = lunchTimeParts.length > 1
+                          ? int.tryParse(lunchTimeParts[1]) ?? 0
+                          : 0;
+                      final totalLunchMinutes = lunchHours * 60 + lunchMinutes;
+
+                      return Container(
+                        color: index.isEven
+                            ? isDarkMode
+                                ? Colors.grey[900]
+                                : Colors.white
+                            : isDarkMode
+                                ? Colors.grey[800]
+                                : Colors.grey[50],
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(vertical: 10),
+                          child: Row(
+                            children: [
+                              SizedBox(width: 16),
+                              CircleAvatar(
+                                radius: 12,
+                                backgroundColor: isDarkMode
+                                    ? Colors.blue[700]
+                                    : Colors.blueAccent,
+                                child: Text(
+                                  data['rank'].toString(),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 10),
+                              Expanded(
+                                  flex: 2,
+                                  child: AutoSizeText(
+                                    fullName,
+                                    style: TextStyle(
+                                      color: isDarkMode
+                                          ? Colors.white
+                                          : Colors.black,
+                                    ),
+                                    maxLines: 1,
+                                    minFontSize: 12,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.start,
+                                  )),
+                              // Days column based on displayType
+                              Expanded(
+                                flex: 1,
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      displayType == 2
+                                          ? data['total_absence_days']
+                                              .toString()
+                                          : displayType == 5
+                                              ? daysWithoutWorktime.toString()
+                                              : data['total_off_days']
+                                                  .toString(),
+                                      style: TextStyle(
+                                          color: isDarkMode
+                                              ? Colors.white
+                                              : Colors.black),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    if (displayType != 2 &&
+                                        displayType != 5 &&
+                                        totalAbsenceDays > 0)
+                                      Container(
+                                        margin: EdgeInsets.only(top: 4),
+                                        padding: EdgeInsets.symmetric(
+                                            horizontal: 4, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red,
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          'A - ${data['total_absence_days'].toString()}',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 10,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              // Work Time with red background if < 8 hours
+                              Expanded(
+                                flex: 1,
+                                child: Container(
+                                  margin: EdgeInsets.only(
+                                      right: 10, left: 10, top: 4, bottom: 4),
+                                  padding: EdgeInsets.symmetric(vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: totalWorkMinutes < 8 * 60
+                                        ? Colors.red
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    workTime,
+                                    style: TextStyle(
+                                      color: totalWorkMinutes < 8 * 60
+                                          ? Colors.white
+                                          : isDarkMode
+                                              ? Colors.white
+                                              : Colors.black,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                              // Lunch Time with red background if > 1 hour
+                              Expanded(
+                                flex: 1,
+                                child: Container(
+                                  margin: EdgeInsets.only(
+                                      right: 10, left: 10, top: 4, bottom: 4),
+                                  padding: EdgeInsets.symmetric(vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: totalLunchMinutes > 60
+                                        ? Colors.red
+                                        : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    lunchTime,
+                                    style: TextStyle(
+                                      color: totalLunchMinutes > 60
+                                          ? Colors.white
+                                          : isDarkMode
+                                              ? Colors.white
+                                              : Colors.black,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      return true;
+    } on DioException catch (e) {
+      progress?.dismiss();
+      dioMessage(
+          e,
+          'Work Summary Failed!',
+          '${Trace.from(StackTrace.current).frames[0].member} Line: ${Trace.from(StackTrace.current).frames[0].line}',
+          context,
+          true);
+    } on Exception catch (e) {
+      progress?.dismiss();
+      if (kDebugMode) {
+        print('Failed to fetch work summary: $e');
+      }
+    }
+
+    setState(() {
+      summarylistResult = true;
+    });
 
     return false;
   }

@@ -16,4 +16,5 @@ class Config {
   static const attendanceSummaryAPI = "/attendance/attendancesummary";
   static const attendanceEmpWiseAPI = "/attendance/attendanceempwise";
   static const attendanceConciseAPI = "/attendance/attendanceconcise";
+  static const attendanceLeaveSummaryAPI = "/attendance/worksummary";
 }
