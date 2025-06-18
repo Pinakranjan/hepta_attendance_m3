@@ -217,10 +217,10 @@ class _PageNameWidgetState extends State<PageNameWidget> {
                                         items: const [
                                           PopupMenuItem<int>(
                                               value: 1,
-                                              child: Text("Off Days")),
+                                              child: Text("Leave Days")),
                                           PopupMenuItem<int>(
                                               value: 2,
-                                              child: Text("Absence Days")),
+                                              child: Text("Absent Days")),
                                           PopupMenuItem<int>(
                                               value: 3,
                                               child: Text("Work Hours")),

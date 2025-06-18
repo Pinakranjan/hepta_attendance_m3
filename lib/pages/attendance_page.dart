@@ -264,21 +264,49 @@ class _MyWidgetState extends State<AttendancePage>
     _leaveBottomSheet(context);
   }
 
-  void locationSub() {
+  void locationSub() async {
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
       return;
     }
 
     try {
+      // Check if location services are enabled
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (kDebugMode) {
+          print('Location services are disabled');
+        }
+        return;
+      }
+
+      // Get initial position quickly
+      try {
+        final position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+        ).timeout(Duration(seconds: 10));
+
+        setState(() {
+          lat = position.latitude.toStringAsFixed(8);
+          long = position.longitude.toStringAsFixed(8);
+        });
+      } on TimeoutException {
+        final lastPosition = await Geolocator.getLastKnownPosition();
+        if (lastPosition != null) {
+          setState(() {
+            lat = lastPosition.latitude.toStringAsFixed(8);
+            long = lastPosition.longitude.toStringAsFixed(8);
+          });
+        }
+      }
       const settings = LocationSettings(
         accuracy: LocationAccuracy.best,
         distanceFilter: 0,
       );
 
       locationSubscription =
-          Geolocator.getPositionStream(locationSettings: settings)
-              .listen((position) {
+          Geolocator.getPositionStream(locationSettings: settings).listen(
+              (position) {
         setState(() {
           lat = position.latitude.toStringAsFixed(8);
           long = position.longitude.toStringAsFixed(8);
@@ -291,6 +319,10 @@ class _MyWidgetState extends State<AttendancePage>
             });
           }
         });
+      }, onError: (e) {
+        if (kDebugMode) {
+          print('Location stream error: $e');
+        }
       });
 
       // locationSubscription.pause();
@@ -902,6 +934,13 @@ class _MyWidgetState extends State<AttendancePage>
                                   materialTapTargetSize:
                                       MaterialTapTargetSize.shrinkWrap,
                                   onSelected: (value) {
+                                    // awesomePopup(
+                                    //   context,
+                                    //   'Location feature coming soon!',
+                                    //   'Location Feature',
+                                    //   'info',
+                                    // ).show();
+                                    // locationSub();
                                     // Navigator.pushNamedAndRemoveUntil(
                                     //   context,
                                     //   '/project',
@@ -7018,8 +7057,8 @@ class _MyWidgetState extends State<AttendancePage>
       final requestDate = response.data['request_date'] ?? 'N/A';
 
       if (result.isNotEmpty) {
-        // Early exit condition for Off Days with no absences
-        if (reportType == "Off Days" &&
+        // Early exit condition for Leave Days with no absences
+        if (reportType == "Leave Days" &&
             type == true &&
             result.every((data) =>
                 (int.tryParse(data['total_absence_days'].toString()) ?? 0) ==
@@ -7130,7 +7169,7 @@ class _MyWidgetState extends State<AttendancePage>
                   ),
                   child: Row(
                     children: [
-                      SizedBox(width: 16),
+                      SizedBox(width: 8),
                       SizedBox(
                           width: 30,
                           child: Text('SN',
@@ -7139,7 +7178,7 @@ class _MyWidgetState extends State<AttendancePage>
                                   color: isDarkMode
                                       ? Colors.white
                                       : Colors.black))),
-                      SizedBox(width: 10),
+                      SizedBox(width: 5),
                       Expanded(
                           flex: 2,
                           child: Text('Name',
@@ -7155,7 +7194,7 @@ class _MyWidgetState extends State<AttendancePage>
                                   ? 'Absent Days'
                                   : displayType == 5
                                       ? 'Missed Punch'
-                                      : 'Off Days',
+                                      : 'Leave Days',
                               style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color:
@@ -7177,7 +7216,7 @@ class _MyWidgetState extends State<AttendancePage>
                                   color:
                                       isDarkMode ? Colors.white : Colors.black),
                               textAlign: TextAlign.center)),
-                      SizedBox(width: 8),
+                      SizedBox(width: 2),
                     ],
                   ),
                 ),
@@ -7231,7 +7270,7 @@ class _MyWidgetState extends State<AttendancePage>
                           padding: EdgeInsets.symmetric(vertical: 10),
                           child: Row(
                             children: [
-                              SizedBox(width: 16),
+                              SizedBox(width: 8),
                               CircleAvatar(
                                 radius: 12,
                                 backgroundColor: isDarkMode
@@ -7246,7 +7285,7 @@ class _MyWidgetState extends State<AttendancePage>
                                   ),
                                 ),
                               ),
-                              SizedBox(width: 10),
+                              SizedBox(width: 5),
                               Expanded(
                                   flex: 2,
                                   child: AutoSizeText(
@@ -7356,7 +7395,7 @@ class _MyWidgetState extends State<AttendancePage>
                                   ),
                                 ),
                               ),
-                              SizedBox(width: 8),
+                              SizedBox(width: 2),
                             ],
                           ),
                         ),
